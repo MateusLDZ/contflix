@@ -16,6 +16,7 @@ export type ClienteAtivoRow = {
   margem: number | null;
   quadrante: string | null;
 };
+export type Kpi = { label: string; value: string; hint: string; tone?: "default" | "alert" | "accent"; };
 
 export const kpis: Kpi[] = [
   { label: "Clientes Ativos", value: "190", hint: "Base ativa no mês", tone: "accent" },
