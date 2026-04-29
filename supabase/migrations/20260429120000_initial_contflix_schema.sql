@@ -165,13 +165,8 @@ create index if not exists idx_alocacoes_clientes_mes_referencia on alocacoes_cl
 create index if not exists idx_metricas_marketing_mes_referencia on metricas_marketing(mes_referencia);
 
 create or replace view vw_dashboard_kpis as
-with ultimo_mes_disponivel as (
-  select max(mes_referencia)::date as mes
-  from (
-    select fc.mes_referencia from financeiro_clientes fc
-    union all
-    select mm.mes_referencia from metricas_marketing mm
-  ) meses
+with mes_atual as (
+  select date_trunc('month', current_date)::date as mes
 ),
 financeiro_mes as (
   select
@@ -180,7 +175,7 @@ financeiro_mes as (
     coalesce(sum(fc.lucro), 0)::numeric(12,2) as lucro_mensal_total,
     coalesce(avg(fc.margem), 0)::numeric(8,4) as margem_media
   from financeiro_clientes fc
-  join ultimo_mes_disponivel umd on fc.mes_referencia = umd.mes
+  join mes_atual ma on fc.mes_referencia = ma.mes
 ),
 marketing_mes as (
   select
@@ -190,8 +185,8 @@ marketing_mes as (
     coalesce(mm.vendas, 0)::integer as vendas_mes,
     coalesce(mm.cac, 0)::numeric(12,2) as cac_mes,
     coalesce(mm.roi, 0)::numeric(8,4) as roi_mes
-  from ultimo_mes_disponivel umd
-  left join metricas_marketing mm on mm.mes_referencia = umd.mes
+  from mes_atual ma
+  left join metricas_marketing mm on mm.mes_referencia = ma.mes
 )
 select
   (select count(*)::bigint from clientes) as total_clientes,
@@ -269,28 +264,18 @@ join clientes c on c.id = fc.cliente_id
 group by coalesce(c.segmento, 'sem_segmento');
 
 create or replace view vw_ocupacao_time as
-with alocacoes_agrupadas as (
-  select
-    ac.time_id,
-    ac.mes_referencia,
-    ac.colaborador_id,
-    sum(ac.horas_alocadas)::numeric(12,2) as horas_alocadas_colaborador
-  from alocacoes_clientes ac
-  where ac.time_id is not null
-  group by ac.time_id, ac.mes_referencia, ac.colaborador_id
-)
 select
   t.id as time_id,
   t.nome as time_nome,
-  aa.mes_referencia,
-  coalesce(sum(aa.horas_alocadas_colaborador), 0)::numeric(12,2) as total_horas_alocadas,
+  ac.mes_referencia,
+  coalesce(sum(ac.horas_alocadas), 0)::numeric(12,2) as total_horas_alocadas,
   coalesce(sum(col.horas_produtivas_mes), 0)::numeric(12,2) as total_horas_disponiveis,
   case
     when coalesce(sum(col.horas_produtivas_mes), 0) > 0
-      then (coalesce(sum(aa.horas_alocadas_colaborador), 0) / coalesce(sum(col.horas_produtivas_mes), 0))::numeric(8,4)
+      then (coalesce(sum(ac.horas_alocadas), 0) / coalesce(sum(col.horas_produtivas_mes), 0))::numeric(8,4)
     else 0::numeric(8,4)
   end as percentual_ocupacao
-from alocacoes_agrupadas aa
-join times t on t.id = aa.time_id
-left join colaboradores col on col.id = aa.colaborador_id
-group by t.id, t.nome, aa.mes_referencia;
+from alocacoes_clientes ac
+join times t on t.id = ac.time_id
+left join colaboradores col on col.id = ac.colaborador_id
+group by t.id, t.nome, ac.mes_referencia;
