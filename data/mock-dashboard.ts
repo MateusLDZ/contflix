@@ -16,3 +16,28 @@ export const kpis: Kpi[] = [
   { label: "CAC", value: "R$ 1.250,00", hint: "Custo de aquisição" },
   { label: "ROI", value: "15.9%", hint: "Retorno agregado" }
 ];
+
+export const dashboardInsights = {
+  topProfitable: [
+    { id: 303, name: "SHIRANAI SUSHI", profit: "R$ 3.495,86", margin: "74.8% margem" },
+    { id: 10, name: "FABRO & MENEZES", profit: "R$ 981,25", margin: "53.9% margem" },
+    { id: 175, name: "LABBO COMUNICAÇÃO", profit: "R$ 926,91", margin: "67.8% margem" }
+  ],
+  topAlerts: [
+    { id: 308, name: "LSS SUSHI", loss: "-R$ 411,05", tag: "Prejuízo" },
+    { id: 309, name: "AKSQ", loss: "-R$ 373,86", tag: "Prejuízo" },
+    { id: 322, name: "DEEP SUSHI LAGOA", loss: "-R$ 315,10", tag: "Prejuízo" }
+  ],
+  quadrantChart: [
+    { name: "⭐ Alta Margem · Baixo Esforço", value: 52, color: "#10B981" },
+    { name: "🔴 PREJUÍZO", value: 10, color: "#3B82F6" },
+    { name: "📝 Baixa Margem · Baixo Esforço", value: 12, color: "#F59E0B" },
+    { name: "⚙️ Alta Margem · Alto Esforço", value: 17, color: "#EF4444" },
+    { name: "⚠️ Baixa Margem · Alto Esforço", value: 9, color: "#A855F7" }
+  ],
+  segmentChart: [
+    { name: "Comércio", value: 188, color: "#4B4F70" },
+    { name: "Serviços", value: 1, color: "#10B981" },
+    { name: "Indústria", value: 1, color: "#C13B56" }
+  ]
+};
