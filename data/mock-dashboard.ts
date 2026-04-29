@@ -29,11 +29,11 @@ export const dashboardInsights = {
     { id: 322, name: "DEEP SUSHI LAGOA", loss: "-R$ 315,10", tag: "Prejuízo" }
   ],
   quadrantChart: [
-    { name: "⭐ Alta Margem · Baixo Esforço", value: 52, color: "#10B981" },
-    { name: "🔴 Prejuízo", value: 10, color: "#3B82F6" },
-    { name: "📝 Baixa Margem · Baixo Esforço", value: 12, color: "#F59E0B" },
-    { name: "⚙️ Alta Margem · Alto Esforço", value: 17, color: "#EF4444" },
-    { name: "⚠️ Baixa Margem · Alto Esforço", value: 9, color: "#A855F7" }
+    { name: "Alta Margem · Baixo Esforço", value: 52, color: "#10B981" },
+    { name: "Prejuízo", value: 10, color: "#3B82F6" },
+    { name: "Baixa Margem · Baixo Esforço", value: 12, color: "#F59E0B" },
+    { name: "Alta Margem · Alto Esforço", value: 17, color: "#EF4444" },
+    { name: "Baixa Margem · Alto Esforço", value: 9, color: "#A855F7" }
   ],
   segmentChart: [
     { name: "Comércio", value: 188, color: "#4B4F70" },

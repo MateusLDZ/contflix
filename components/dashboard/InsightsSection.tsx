@@ -3,13 +3,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { dashboardInsights } from "@/data/mock-dashboard";
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Trophy, AlertTriangle, ChartNoAxesCombined, Calculator } from "lucide-react";
 
 export function InsightsSection() {
   return (
     <section className="grid grid-cols-1 xl:grid-cols-2 gap-4">
       <Card className="border-0 shadow-sm">
         <CardHeader className="bg-emerald-100/80 rounded-t-2xl border-b border-emerald-200/70 py-4">
-          <CardTitle className="text-2xl font-semibold text-emerald-900">⭐ Top 3 Mais Rentáveis</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-2xl font-semibold text-emerald-900"><Trophy className="h-6 w-6" />Top 3 Mais Rentáveis</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {dashboardInsights.topProfitable.map((item, index) => (
@@ -32,7 +33,7 @@ export function InsightsSection() {
 
       <Card className="border-0 shadow-sm">
         <CardHeader className="bg-rose-100/80 rounded-t-2xl border-b border-rose-200/70 py-4">
-          <CardTitle className="text-2xl font-semibold text-rose-900">🚨 Top 3 Alertas (Prejuízo/Churn)</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-2xl font-semibold text-rose-900"><AlertTriangle className="h-6 w-6" />Top 3 Alertas (Prejuízo/Churn)</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {dashboardInsights.topAlerts.map((item) => (
@@ -55,7 +56,7 @@ export function InsightsSection() {
 
       <Card className="border-0 shadow-sm">
         <CardHeader className="py-4 border-b">
-          <CardTitle className="text-2xl font-semibold text-contflix-text">📊 Clientes por Quadrante</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-2xl font-semibold text-contflix-text"><ChartNoAxesCombined className="h-6 w-6" /> Clientes por Quadrante</CardTitle>
         </CardHeader>
         <CardContent className="h-[320px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -72,7 +73,7 @@ export function InsightsSection() {
 
       <Card className="border-0 shadow-sm">
         <CardHeader className="py-4 border-b">
-          <CardTitle className="text-2xl font-semibold text-contflix-text">🧮 Clientes por Segmento</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-2xl font-semibold text-contflix-text"><Calculator className="h-6 w-6" />Clientes por Segmento</CardTitle>
         </CardHeader>
         <CardContent className="h-[320px]">
           <ResponsiveContainer width="100%" height="100%">
