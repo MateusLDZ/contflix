@@ -30,7 +30,7 @@ export const dashboardInsights = {
   ],
   quadrantChart: [
     { name: "⭐ Alta Margem · Baixo Esforço", value: 52, color: "#10B981" },
-    { name: "🔴 PREJUÍZO", value: 10, color: "#3B82F6" },
+    { name: "🔴 Prejuízo", value: 10, color: "#3B82F6" },
     { name: "📝 Baixa Margem · Baixo Esforço", value: 12, color: "#F59E0B" },
     { name: "⚙️ Alta Margem · Alto Esforço", value: 17, color: "#EF4444" },
     { name: "⚠️ Baixa Margem · Alto Esforço", value: 9, color: "#A855F7" }
