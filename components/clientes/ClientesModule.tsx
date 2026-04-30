@@ -26,6 +26,7 @@ const PAGE_SIZE = 10;
 
 const brl = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
 const pct = (value: number) => `${((Number.isFinite(value) ? value : 0) * 100).toFixed(1)}%`;
+const onlyDigits = (value: string) => value.replace(/\D/g, "");
 
 export function ClientesModule() {
   const [clientes, setClientes] = useState<ClienteComMetricas[]>([]);
