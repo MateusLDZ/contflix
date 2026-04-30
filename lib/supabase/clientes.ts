@@ -67,7 +67,7 @@ export async function getClientesTable(): Promise<ClienteComMetricas[]> {
 
 export async function saveClienteCompleto(editingId: string | null, form: ClienteFormPayload) {
   const supabase = getSupabaseClient();
-  const clientePayload = { nome: form.nome, apelido: form.apelido || null, documento: form.documento || null, regime_tributario: form.regime_tributario || null, segmento: form.segmento || null, cidade: form.cidade || null, uf: form.uf || null, status: form.status, data_entrada: form.data_entrada || null, data_saida: form.data_saida || null };
+  const clientePayload = { nome: form.nome, apelido: form.apelido || null, documento: form.documento || null, regime_tributario: form.regime_tributario || null, segmento: form.segmento || null, cidade: form.cidade || null, uf: form.uf || null, status: form.status, ativo: form.status !== "inativo", data_entrada: form.data_entrada || null, data_saida: form.data_saida || null };
 
   const clienteResp = editingId
     ? await supabase.from("clientes").update(clientePayload).eq("id", editingId).select("id").single()
@@ -92,7 +92,7 @@ export async function saveClienteCompleto(editingId: string | null, form: Client
 export async function toggleClienteStatus(clienteId: string, currentStatus: string) {
   const supabase = getSupabaseClient();
   const nextStatus = currentStatus === "inativo" ? "ativo" : "inativo";
-  const { error } = await supabase.from("clientes").update({ status: nextStatus, data_saida: nextStatus === "inativo" ? new Date().toISOString().slice(0, 10) : null }).eq("id", clienteId);
+  const { error } = await supabase.from("clientes").update({ status: nextStatus, ativo: nextStatus !== "inativo", data_saida: nextStatus === "inativo" ? new Date().toISOString().slice(0, 10) : null }).eq("id", clienteId);
   if (error) {
     console.error(error);
     throw error;
