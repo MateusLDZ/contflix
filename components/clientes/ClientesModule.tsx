@@ -34,7 +34,6 @@ export function ClientesModule() {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [viewing, setViewing] = useState<ClienteComMetricas | null>(null);
   const [meta, setMeta] = useState<{ colaboradores: Array<{ id: string; nome: string }>; times: Array<{ id: string; nome: string }> }>({ colaboradores: [], times: [] });
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "cliente", dir: "asc" });
@@ -78,8 +77,11 @@ export function ClientesModule() {
 
   const filtered = useMemo(() => {
     const search = filters.q.toLowerCase().trim();
+    const normalizedSearchDoc = onlyDigits(search);
     const records = clientes.filter((c) => {
-      const hit = !search || [c.nome, c.apelido || "", c.documento || ""].join(" ").toLowerCase().includes(search);
+      const textHit = [c.nome, c.apelido || "", formatCNPJ(c.documento || "")].join(" ").toLowerCase().includes(search);
+      const documentHit = normalizedSearchDoc ? onlyDigits(c.documento || "").includes(normalizedSearchDoc) : false;
+      const hit = !search || textHit || documentHit;
       return hit && (!filters.status || c.status === filters.status) && (!filters.segmento || c.segmento === filters.segmento) && (!filters.regime || c.regime_tributario === filters.regime) && (!filters.quadrante || c.quadrante === filters.quadrante);
     });
     const sorted = [...records].sort((a, b) => {
@@ -133,7 +135,7 @@ export function ClientesModule() {
 
   const onSave = async () => {
     if (!form.nome || !form.status || !form.mes_referencia) return setError("Preencha nome, status e mês de referência.");
-    if (!/^$|^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/.test(form.documento || "")) return setError("Documento inválido. Use formato CPF/CNPJ.");
+    if (form.documento && onlyDigits(form.documento).length !== 14) return setError("CNPJ inválido. Informe os 14 dígitos.");
     try {
       setSaving(true);
       setError(null);
@@ -198,7 +200,6 @@ export function ClientesModule() {
       <section className="rounded-xl bg-slate-50 p-4"><h4 className="font-semibold mb-2">Resumo automático</h4><div className="grid md:grid-cols-4 gap-2 text-sm"><p>Receita: <b>{brl(resumoPreview.receita)}</b></p><p>Custo: <b>{brl(resumoPreview.custo)}</b></p><p>Lucro: <b>{brl(resumoPreview.lucro)}</b></p><p>Margem: <b>{pct(resumoPreview.margem)}</b></p><p>Total de horas: <b>{resumoPreview.horas.toFixed(1)}</b></p><p className="md:col-span-3">Quadrante: <span className="font-semibold" style={{ color: QUADRANTE_COLORS[resumoPreview.quadrante] }}>{resumoPreview.quadrante}</span></p></div></section>
       <div className="flex justify-between gap-2"><div>{editingId && <Button variant="ghost" disabled={saving} onClick={onToggleStatusInModal}>{form.status === "inativo" ? "Reativar cliente" : "Inativar cliente"}</Button>}</div><div className="flex gap-2"><Button variant="ghost" onClick={() => setShowModal(false)}>Cancelar</Button><Button disabled={saving} onClick={onSave}>{saving ? "Salvando..." : "Salvar cliente"}</Button></div></div></div></div>}
 
-    {viewing && <div className="fixed inset-0 z-50 bg-black/40 p-4 grid place-items-center"><Card className="max-w-xl w-full"><CardHeader className="flex flex-row justify-between"><CardTitle>{viewing.nome}</CardTitle><Button variant="ghost" onClick={() => setViewing(null)}>Fechar</Button></CardHeader><CardContent className="space-y-2 text-sm"><p>Status: <b>{viewing.status}</b></p><p>Documento: {viewing.documento || "-"}</p><p>Receita: {brl(viewing.receita)}</p><p>Custo: {brl(viewing.custo)}</p><p>Lucro: {brl(viewing.lucro)}</p></CardContent></Card></div>}
   </div>;
 }
 
