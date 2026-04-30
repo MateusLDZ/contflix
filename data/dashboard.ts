@@ -26,14 +26,7 @@ type DashboardKpisRow = {
 
 type TopClienteRentavel = { cliente_id: number; nome: string; lucro: number | null; margem: number | null };
 type TopClienteAlerta = { cliente_id: number; nome: string; lucro: number | null };
-type ClienteQuadrante = {
-  quadrante: string;
-  total_clientes: number | null;
-  receita_total: number | null;
-  custo_total: number | null;
-  lucro_total: number | null;
-  margem_media: number | null;
-};
+type ClienteQuadrante = { quadrante: string; total_clientes: number | null };
 type ClienteSegmento = { segmento: string; total_clientes: number | null };
 
 export type DashboardInsightsData = {
@@ -66,20 +59,8 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", { style: "currency", cu
 const decimalFormatter = new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const percentFormatter = new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
-const quadrantColorMap: Record<string, string> = {
-  "Alta Margem · Baixo Esforço": "#10B981",
-  "Alta Margem · Alto Esforço": "#3B82F6",
-  "Baixa Margem · Baixo Esforço": "#F59E0B",
-  "Baixa Margem · Alto Esforço": "#A855F7",
-  Prejuízo: "#EF4444",
-  "Sem quadrante": "#4B4F70"
-};
-const segmentColorMap: Record<string, string> = {
-  Comércio: "#4B4F70",
-  Serviços: "#10B981",
-  Indústria: "#C13B56",
-  "Sem segmento": "#F59E0B"
-};
+const quadrantColors = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#A855F7"];
+const segmentColors = ["#4B4F70", "#10B981", "#C13B56", "#F59E0B", "#A855F7"];
 
 const quadranteNomeMap: Record<string, string> = {
   alta_margem_baixo_esforco: "Alta Margem · Baixo Esforço",
@@ -156,48 +137,18 @@ function normalizeLabel(raw: string, nameMap: Record<string, string>): string {
 
 export async function getDashboardKpis(): Promise<Kpi[]> {
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase.from("vw_dashboard_kpis").select("*").maybeSingle<DashboardKpisRow>();
-
-  if (error) {
-    console.error("Erro vw_dashboard_kpis:", error);
-  }
-
-  console.log("vw_dashboard_kpis data:", data);
-
+  const { data } = await supabase.from("vw_dashboard_kpis").select("*").maybeSingle<DashboardKpisRow>();
   return buildKpisFromRow(data ?? null);
 }
 
 export async function getDashboardInsights(): Promise<DashboardInsightsData> {
   const supabase = getSupabaseClient();
-  const [rentResponse, alertsResponse, quadrantesResponse, segmentosResponse] = await Promise.all([
+  const [{ data: topRent }, { data: topAlerts }, { data: quadrantes }, { data: segmentos }] = await Promise.all([
     supabase.from("vw_top_clientes_rentaveis").select("cliente_id,nome,lucro,margem").limit(3).returns<TopClienteRentavel[]>(),
     supabase.from("vw_top_alertas_clientes").select("cliente_id,nome,lucro").limit(3).returns<TopClienteAlerta[]>(),
-    supabase.from("vw_clientes_por_quadrante").select("quadrante,total_clientes,receita_total,custo_total,lucro_total,margem_media").returns<ClienteQuadrante[]>(),
+    supabase.from("vw_clientes_por_quadrante").select("quadrante,total_clientes").returns<ClienteQuadrante[]>(),
     supabase.from("vw_clientes_por_segmento").select("segmento,total_clientes").returns<ClienteSegmento[]>()
   ]);
-
-  if (rentResponse.error) {
-    console.error("Erro vw_top_clientes_rentaveis:", rentResponse.error);
-  }
-  if (alertsResponse.error) {
-    console.error("Erro vw_top_alertas_clientes:", alertsResponse.error);
-  }
-  if (quadrantesResponse.error) {
-    console.error("Erro vw_clientes_por_quadrante:", quadrantesResponse.error);
-  }
-  if (segmentosResponse.error) {
-    console.error("Erro vw_clientes_por_segmento:", segmentosResponse.error);
-  }
-
-  console.log("vw_top_clientes_rentaveis data:", rentResponse.data);
-  console.log("vw_top_alertas_clientes data:", alertsResponse.data);
-  console.log("vw_clientes_por_quadrante data:", quadrantesResponse.data);
-  console.log("vw_clientes_por_segmento data:", segmentosResponse.data);
-
-  const topRent = rentResponse.data;
-  const topAlerts = alertsResponse.data;
-  const quadrantes = quadrantesResponse.data;
-  const segmentos = segmentosResponse.data;
 
   return {
     topProfitable: (topRent ?? []).map((row) => ({
@@ -212,22 +163,16 @@ export async function getDashboardInsights(): Promise<DashboardInsightsData> {
       loss: currencyFormatter.format(Math.min(n(row.lucro), 0)),
       tag: "Prejuízo"
     })),
-    quadrantChart: (quadrantes ?? []).map((row) => {
-      const normalizedName = normalizeLabel(row.quadrante, quadranteNomeMap);
-      return {
-        name: normalizedName,
-        value: n(row.total_clientes),
-        color: quadrantColorMap[normalizedName] ?? "#4B4F70"
-      };
-    }),
-    segmentChart: (segmentos ?? []).map((row) => {
-      const normalizedName = normalizeLabel(row.segmento, segmentoNomeMap);
-      return {
-        name: normalizedName,
-        value: n(row.total_clientes),
-        color: segmentColorMap[normalizedName] ?? "#4B4F70"
-      };
-    })
+    quadrantChart: (quadrantes ?? []).map((row, index) => ({
+      name: normalizeLabel(row.quadrante, quadranteNomeMap),
+      value: n(row.total_clientes),
+      color: quadrantColors[index % quadrantColors.length]
+    })),
+    segmentChart: (segmentos ?? []).map((row, index) => ({
+      name: normalizeLabel(row.segmento, segmentoNomeMap),
+      value: n(row.total_clientes),
+      color: segmentColors[index % segmentColors.length]
+    }))
   };
 }
 
