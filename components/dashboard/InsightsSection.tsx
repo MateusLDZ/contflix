@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { DashboardInsightsData } from "@/data/dashboard";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Trophy, AlertTriangle, ChartNoAxesCombined, Calculator } from "lucide-react";
 
 const EMPTY_INSIGHTS: DashboardInsightsData = {

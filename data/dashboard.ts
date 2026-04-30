@@ -137,48 +137,18 @@ function normalizeLabel(raw: string, nameMap: Record<string, string>): string {
 
 export async function getDashboardKpis(): Promise<Kpi[]> {
   const supabase = getSupabaseClient();
-  const { data, error } = await supabase.from("vw_dashboard_kpis").select("*").maybeSingle<DashboardKpisRow>();
-
-  if (error) {
-    console.error("Erro vw_dashboard_kpis:", error);
-  }
-
-  console.log("vw_dashboard_kpis data:", data);
-
+  const { data } = await supabase.from("vw_dashboard_kpis").select("*").maybeSingle<DashboardKpisRow>();
   return buildKpisFromRow(data ?? null);
 }
 
 export async function getDashboardInsights(): Promise<DashboardInsightsData> {
   const supabase = getSupabaseClient();
-  const [rentResponse, alertsResponse, quadrantesResponse, segmentosResponse] = await Promise.all([
+  const [{ data: topRent }, { data: topAlerts }, { data: quadrantes }, { data: segmentos }] = await Promise.all([
     supabase.from("vw_top_clientes_rentaveis").select("cliente_id,nome,lucro,margem").limit(3).returns<TopClienteRentavel[]>(),
     supabase.from("vw_top_alertas_clientes").select("cliente_id,nome,lucro").limit(3).returns<TopClienteAlerta[]>(),
     supabase.from("vw_clientes_por_quadrante").select("quadrante,total_clientes").returns<ClienteQuadrante[]>(),
     supabase.from("vw_clientes_por_segmento").select("segmento,total_clientes").returns<ClienteSegmento[]>()
   ]);
-
-  if (rentResponse.error) {
-    console.error("Erro vw_top_clientes_rentaveis:", rentResponse.error);
-  }
-  if (alertsResponse.error) {
-    console.error("Erro vw_top_alertas_clientes:", alertsResponse.error);
-  }
-  if (quadrantesResponse.error) {
-    console.error("Erro vw_clientes_por_quadrante:", quadrantesResponse.error);
-  }
-  if (segmentosResponse.error) {
-    console.error("Erro vw_clientes_por_segmento:", segmentosResponse.error);
-  }
-
-  console.log("vw_top_clientes_rentaveis data:", rentResponse.data);
-  console.log("vw_top_alertas_clientes data:", alertsResponse.data);
-  console.log("vw_clientes_por_quadrante data:", quadrantesResponse.data);
-  console.log("vw_clientes_por_segmento data:", segmentosResponse.data);
-
-  const topRent = rentResponse.data;
-  const topAlerts = alertsResponse.data;
-  const quadrantes = quadrantesResponse.data;
-  const segmentos = segmentosResponse.data;
 
   return {
     topProfitable: (topRent ?? []).map((row) => ({
