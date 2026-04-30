@@ -147,6 +147,21 @@ export function ClientesModule() {
       setSaving(false);
     }
   };
+  const onToggleStatusInModal = async () => {
+    if (!editingId) return;
+    try {
+      setSaving(true);
+      setError(null);
+      await toggleClienteStatus(editingId, form.status);
+      setForm((prev) => ({ ...prev, status: prev.status === "inativo" ? "ativo" : "inativo" }));
+      await load();
+    } catch (err) {
+      console.error("Erro ao alterar status do cliente:", err);
+      setError("Não foi possível alterar o status do cliente.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return <div className="space-y-6">
     <Card className="shadow-sm border-slate-200">
@@ -170,7 +185,7 @@ export function ClientesModule() {
         <p className="text-sm text-slate-500">{filtered.length} clientes encontrados</p>
 
         {!loading && !filtered.length ? <div className="rounded-2xl border border-dashed p-10 text-center"><p className="text-lg font-semibold">Nenhum cliente cadastrado ainda</p><p className="text-sm text-slate-500">Cadastre o primeiro cliente para alimentar o dashboard.</p></div> :
-          <div className="overflow-auto rounded-xl border"><table className="w-full text-sm"><thead className="bg-slate-50"><tr>{[["cliente", "Cliente"],["documento", "Documento"],["regime", "Regime"],["segmento", "Segmento"],["status", "Status"],["receita", "Honorário"],["margem", "Margem"],["quadrante", "Quadrante"]].map(([k, label]) => <th key={k} className="text-left px-3 py-2"><button onClick={() => setSort({ key: k as SortKey, dir: sort.key === k && sort.dir === "asc" ? "desc" : "asc" })}>{label}</button></th>)}<th className="px-3 py-2">Custo</th><th className="px-3 py-2">Lucro</th><th className="px-3 py-2">Horas</th><th className="px-3 py-2">Ações</th></tr></thead><tbody>{rows.map((c) => <tr key={c.id} className="border-t"><td className="px-3 py-2"><p className="font-medium">{c.nome}</p>{c.apelido && <p className="text-xs text-slate-500">{c.apelido}</p>}</td><td className="px-3 py-2">{c.documento || "-"}</td><td className="px-3 py-2">{c.regime_tributario || "-"}</td><td className="px-3 py-2">{c.segmento || "-"}</td><td className="px-3 py-2">{c.status}</td><td className="px-3 py-2">{brl(c.receita)}</td><td className="px-3 py-2">{pct(c.margem)}</td><td className="px-3 py-2"><span className="text-white rounded-full px-2 py-1 text-xs" style={{ background: QUADRANTE_COLORS[c.quadrante] }}>{c.quadrante}</span></td><td className="px-3 py-2">{brl(c.custo)}</td><td className="px-3 py-2">{brl(c.lucro)}</td><td className="px-3 py-2">{c.horas_alocadas.toFixed(1)}</td><td className="px-3 py-2"><div className="flex gap-1"><Button variant="ghost" onClick={() => openEdit(c)}>Editar</Button><Button variant="ghost" onClick={() => setViewing(c)}>Ver detalhes</Button><Button variant="ghost" onClick={async () => { await toggleClienteStatus(c.id, c.status); await load(); }}>{c.status === "inativo" ? "Reativar" : "Inativar"}</Button></div></td></tr>)}</tbody></table></div>}
+          <div className="overflow-x-auto rounded-xl border"><table className="w-full min-w-[1200px] text-sm"><thead className="bg-slate-50"><tr>{[["cliente", "Cliente"],["documento", "Documento"],["regime", "Regime"],["segmento", "Segmento"],["status", "Status"],["receita", "Honorário"],["margem", "Margem"],["quadrante", "Quadrante"]].map(([k, label]) => <th key={k} className="text-left px-3 py-2 whitespace-nowrap"><button onClick={() => setSort({ key: k as SortKey, dir: sort.key === k && sort.dir === "asc" ? "desc" : "asc" })}>{label}</button></th>)}<th className="px-3 py-2 whitespace-nowrap">Custo</th><th className="px-3 py-2 whitespace-nowrap">Lucro</th><th className="px-3 py-2 whitespace-nowrap">Horas</th><th className="px-3 py-2 whitespace-nowrap">Ações</th></tr></thead><tbody>{rows.map((c) => <tr key={c.id} className="border-t"><td className="px-3 py-2 whitespace-nowrap"><p className="font-medium whitespace-nowrap">{c.nome}</p></td><td className="px-3 py-2 whitespace-nowrap">{c.documento || "-"}</td><td className="px-3 py-2 whitespace-nowrap">{c.regime_tributario || "-"}</td><td className="px-3 py-2 whitespace-nowrap">{c.segmento || "-"}</td><td className="px-3 py-2 whitespace-nowrap">{formatStatus(c.status)}</td><td className="px-3 py-2 whitespace-nowrap">{brl(c.receita)}</td><td className="px-3 py-2 whitespace-nowrap">{pct(c.margem)}</td><td className="px-3 py-2 whitespace-nowrap"><span className="text-white rounded-full px-3 py-1 text-xs whitespace-nowrap inline-flex items-center" style={{ background: QUADRANTE_COLORS[c.quadrante] }}>{c.quadrante}</span></td><td className="px-3 py-2 whitespace-nowrap">{brl(c.custo)}</td><td className="px-3 py-2 whitespace-nowrap">{brl(c.lucro)}</td><td className="px-3 py-2 whitespace-nowrap">{c.horas_alocadas.toFixed(1)}</td><td className="px-3 py-2 whitespace-nowrap"><div className="flex gap-1"><Button variant="ghost" onClick={() => openEdit(c)}>Editar</Button></div></td></tr>)}</tbody></table></div>}
 
         <div className="flex items-center justify-between"><Button variant="ghost" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Anterior</Button><span className="text-sm">Página {page} de {totalPages}</span><Button variant="ghost" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Próxima</Button></div>
       </CardContent>
@@ -181,7 +196,7 @@ export function ClientesModule() {
       <section className="space-y-2"><h4 className="font-semibold">Financeiro mensal</h4><div className="grid md:grid-cols-3 gap-2"><input type="month" className="rounded-xl border px-3 py-2" value={form.mes_referencia} onChange={(e) => setForm({ ...form, mes_referencia: e.target.value })} /><input type="number" step="0.01" className="rounded-xl border px-3 py-2" placeholder="Receita" value={form.receita} onChange={(e) => setForm({ ...form, receita: Number(e.target.value) })} /><input type="number" step="0.01" className="rounded-xl border px-3 py-2" placeholder="Custo" value={form.custo} onChange={(e) => setForm({ ...form, custo: Number(e.target.value) })} /></div></section>
       <section className="space-y-2"><h4 className="font-semibold">Operação / esforço</h4>{form.alocacoes.map((a, idx) => <div key={idx} className="grid md:grid-cols-4 gap-2"><select className="rounded-xl border px-3 py-2" value={a.colaborador_id} onChange={(e) => updateAloc(setForm, form.alocacoes, idx, { colaborador_id: e.target.value })}><option value="">Colaborador</option>{meta.colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select><select className="rounded-xl border px-3 py-2" value={a.time_id || ""} onChange={(e) => updateAloc(setForm, form.alocacoes, idx, { time_id: e.target.value })}><option value="">Time</option>{meta.times.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}</select><input type="month" className="rounded-xl border px-3 py-2" value={a.mes_referencia} onChange={(e) => updateAloc(setForm, form.alocacoes, idx, { mes_referencia: e.target.value })} /><input type="number" step="0.1" className="rounded-xl border px-3 py-2" value={a.horas_alocadas} onChange={(e) => updateAloc(setForm, form.alocacoes, idx, { horas_alocadas: Number(e.target.value) })} /></div>)}<Button variant="ghost" onClick={() => setForm({ ...form, alocacoes: [...form.alocacoes, { colaborador_id: "", time_id: "", mes_referencia: form.mes_referencia, horas_alocadas: 0 }] })}>+ Adicionar alocação</Button></section>
       <section className="rounded-xl bg-slate-50 p-4"><h4 className="font-semibold mb-2">Resumo automático</h4><div className="grid md:grid-cols-4 gap-2 text-sm"><p>Receita: <b>{brl(resumoPreview.receita)}</b></p><p>Custo: <b>{brl(resumoPreview.custo)}</b></p><p>Lucro: <b>{brl(resumoPreview.lucro)}</b></p><p>Margem: <b>{pct(resumoPreview.margem)}</b></p><p>Total de horas: <b>{resumoPreview.horas.toFixed(1)}</b></p><p className="md:col-span-3">Quadrante: <span className="font-semibold" style={{ color: QUADRANTE_COLORS[resumoPreview.quadrante] }}>{resumoPreview.quadrante}</span></p></div></section>
-      <div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => setShowModal(false)}>Cancelar</Button><Button disabled={saving} onClick={onSave}>{saving ? "Salvando..." : "Salvar cliente"}</Button></div></div></div>}
+      <div className="flex justify-between gap-2"><div>{editingId && <Button variant="ghost" disabled={saving} onClick={onToggleStatusInModal}>{form.status === "inativo" ? "Reativar cliente" : "Inativar cliente"}</Button>}</div><div className="flex gap-2"><Button variant="ghost" onClick={() => setShowModal(false)}>Cancelar</Button><Button disabled={saving} onClick={onSave}>{saving ? "Salvando..." : "Salvar cliente"}</Button></div></div></div></div>}
 
     {viewing && <div className="fixed inset-0 z-50 bg-black/40 p-4 grid place-items-center"><Card className="max-w-xl w-full"><CardHeader className="flex flex-row justify-between"><CardTitle>{viewing.nome}</CardTitle><Button variant="ghost" onClick={() => setViewing(null)}>Fechar</Button></CardHeader><CardContent className="space-y-2 text-sm"><p>Status: <b>{viewing.status}</b></p><p>Documento: {viewing.documento || "-"}</p><p>Receita: {brl(viewing.receita)}</p><p>Custo: {brl(viewing.custo)}</p><p>Lucro: {brl(viewing.lucro)}</p></CardContent></Card></div>}
   </div>;
@@ -191,4 +206,9 @@ function updateAloc(setForm: any, list: AlocacaoClienteInput[], idx: number, pat
   const copy = [...list];
   copy[idx] = { ...copy[idx], ...patch };
   setForm((prev: ClienteFormPayload) => ({ ...prev, alocacoes: copy }));
+}
+
+function formatStatus(status: string) {
+  if (!status) return "";
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
