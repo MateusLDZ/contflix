@@ -30,13 +30,6 @@ export type DashboardInsightsData = {
 
 export type DashboardData = { kpis: Kpi[]; insights: DashboardInsightsData };
 
-export const EMPTY_DASHBOARD_INSIGHTS: DashboardInsightsData = {
-  topProfitable: [],
-  topAlerts: [],
-  quadrantChart: [],
-  segmentChart: []
-};
-
 const currencyFormatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const percentFormatter = new Intl.NumberFormat("pt-BR", { style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
