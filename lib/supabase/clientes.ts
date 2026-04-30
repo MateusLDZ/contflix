@@ -41,16 +41,10 @@ export function calculateResumo(receita: number, custo: number, alocacoes: Aloca
 
 export async function getClientesMeta() {
   const supabase = getSupabaseClient();
-  const [{ data: colaboradores, error: colaboradoresError }, { data: times, error: timesError }] = await Promise.all([
+  const [{ data: colaboradores }, { data: times }] = await Promise.all([
     supabase.from("colaboradores").select("id,nome").order("nome"),
     supabase.from("times").select("id,nome").order("nome")
   ]);
-  if (colaboradoresError) {
-    console.error("Erro ao carregar colaboradores:", colaboradoresError);
-  }
-  if (timesError) {
-    console.error("Erro ao carregar times:", timesError);
-  }
   return { colaboradores: colaboradores ?? [], times: times ?? [] };
 }
 
