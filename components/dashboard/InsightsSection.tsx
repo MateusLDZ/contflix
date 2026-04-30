@@ -1,11 +1,11 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { EMPTY_DASHBOARD_INSIGHTS, type DashboardInsightsData } from "@/lib/supabase/dashboard";
+import type { DashboardInsightsData } from "@/lib/supabase/dashboard";
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Trophy, AlertTriangle, ChartNoAxesCombined, Calculator } from "lucide-react";
 
-export function InsightsSection({ insights = EMPTY_DASHBOARD_INSIGHTS }: { insights?: DashboardInsightsData }) {
+export function InsightsSection({ insights }: { insights: DashboardInsightsData }) {
   return (
     <section className="grid grid-cols-1 xl:grid-cols-2 gap-4">
       <Card className="border-0 shadow-sm">
