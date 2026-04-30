@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { DashboardInsightsData } from "@/lib/supabase/dashboard";
+import type { DashboardInsightsData } from "@/data/dashboard";
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Trophy, AlertTriangle, ChartNoAxesCombined, Calculator } from "lucide-react";
 
