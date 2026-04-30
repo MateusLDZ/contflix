@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Kpi } from "@/data/mock-dashboard";
+import type { Kpi } from "@/data/dashboard";
 
 export function KpiCard({ kpi }: { kpi: Kpi }) {
   const tone = kpi.tone === "alert" ? "bg-contflix-red" : kpi.tone === "accent" ? "bg-contflix-cyan" : "bg-contflix-primary";
