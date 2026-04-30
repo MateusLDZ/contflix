@@ -26,6 +26,7 @@ const PAGE_SIZE = 10;
 
 const brl = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
 const pct = (value: number) => `${((Number.isFinite(value) ? value : 0) * 100).toFixed(1)}%`;
+const onlyDigits = (value: string) => value.replace(/\D/g, "");
 
 export function ClientesModule() {
   const [clientes, setClientes] = useState<ClienteComMetricas[]>([]);
@@ -34,7 +35,6 @@ export function ClientesModule() {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [viewing, setViewing] = useState<ClienteComMetricas | null>(null);
   const [meta, setMeta] = useState<{ colaboradores: Array<{ id: string; nome: string }>; times: Array<{ id: string; nome: string }> }>({ colaboradores: [], times: [] });
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({ key: "cliente", dir: "asc" });
@@ -78,8 +78,11 @@ export function ClientesModule() {
 
   const filtered = useMemo(() => {
     const search = filters.q.toLowerCase().trim();
+    const normalizedSearchDoc = onlyDigits(search);
     const records = clientes.filter((c) => {
-      const hit = !search || [c.nome, c.apelido || "", c.documento || ""].join(" ").toLowerCase().includes(search);
+      const textHit = [c.nome, c.apelido || "", formatCNPJ(c.documento || "")].join(" ").toLowerCase().includes(search);
+      const documentHit = normalizedSearchDoc ? onlyDigits(c.documento || "").includes(normalizedSearchDoc) : false;
+      const hit = !search || textHit || documentHit;
       return hit && (!filters.status || c.status === filters.status) && (!filters.segmento || c.segmento === filters.segmento) && (!filters.regime || c.regime_tributario === filters.regime) && (!filters.quadrante || c.quadrante === filters.quadrante);
     });
     const sorted = [...records].sort((a, b) => {
@@ -133,7 +136,7 @@ export function ClientesModule() {
 
   const onSave = async () => {
     if (!form.nome || !form.status || !form.mes_referencia) return setError("Preencha nome, status e mês de referência.");
-    if (!/^$|^\d{3}\.\d{3}\.\d{3}-\d{2}$|^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/.test(form.documento || "")) return setError("Documento inválido. Use formato CPF/CNPJ.");
+    if (form.documento && onlyDigits(form.documento).length !== 14) return setError("CNPJ inválido. Informe os 14 dígitos.");
     try {
       setSaving(true);
       setError(null);
@@ -143,6 +146,21 @@ export function ClientesModule() {
     } catch (err) {
       console.error("Erro ao salvar cliente:", err);
       setError("Não foi possível salvar o cliente.");
+    } finally {
+      setSaving(false);
+    }
+  };
+  const onToggleStatusInModal = async () => {
+    if (!editingId) return;
+    try {
+      setSaving(true);
+      setError(null);
+      await toggleClienteStatus(editingId, form.status);
+      setForm((prev) => ({ ...prev, status: prev.status === "inativo" ? "ativo" : "inativo" }));
+      await load();
+    } catch (err) {
+      console.error("Erro ao alterar status do cliente:", err);
+      setError("Não foi possível alterar o status do cliente.");
     } finally {
       setSaving(false);
     }
@@ -170,20 +188,30 @@ export function ClientesModule() {
         <p className="text-sm text-slate-500">{filtered.length} clientes encontrados</p>
 
         {!loading && !filtered.length ? <div className="rounded-2xl border border-dashed p-10 text-center"><p className="text-lg font-semibold">Nenhum cliente cadastrado ainda</p><p className="text-sm text-slate-500">Cadastre o primeiro cliente para alimentar o dashboard.</p></div> :
-          <div className="overflow-auto rounded-xl border"><table className="w-full text-sm"><thead className="bg-slate-50"><tr>{[["cliente", "Cliente"],["documento", "Documento"],["regime", "Regime"],["segmento", "Segmento"],["status", "Status"],["receita", "Honorário"],["margem", "Margem"],["quadrante", "Quadrante"]].map(([k, label]) => <th key={k} className="text-left px-3 py-2"><button onClick={() => setSort({ key: k as SortKey, dir: sort.key === k && sort.dir === "asc" ? "desc" : "asc" })}>{label}</button></th>)}<th className="px-3 py-2">Custo</th><th className="px-3 py-2">Lucro</th><th className="px-3 py-2">Horas</th><th className="px-3 py-2">Ações</th></tr></thead><tbody>{rows.map((c) => <tr key={c.id} className="border-t"><td className="px-3 py-2"><p className="font-medium">{c.nome}</p>{c.apelido && <p className="text-xs text-slate-500">{c.apelido}</p>}</td><td className="px-3 py-2">{c.documento || "-"}</td><td className="px-3 py-2">{c.regime_tributario || "-"}</td><td className="px-3 py-2">{c.segmento || "-"}</td><td className="px-3 py-2">{c.status}</td><td className="px-3 py-2">{brl(c.receita)}</td><td className="px-3 py-2">{pct(c.margem)}</td><td className="px-3 py-2"><span className="text-white rounded-full px-2 py-1 text-xs" style={{ background: QUADRANTE_COLORS[c.quadrante] }}>{c.quadrante}</span></td><td className="px-3 py-2">{brl(c.custo)}</td><td className="px-3 py-2">{brl(c.lucro)}</td><td className="px-3 py-2">{c.horas_alocadas.toFixed(1)}</td><td className="px-3 py-2"><div className="flex gap-1"><Button variant="ghost" onClick={() => openEdit(c)}>Editar</Button><Button variant="ghost" onClick={() => setViewing(c)}>Ver detalhes</Button><Button variant="ghost" onClick={async () => { await toggleClienteStatus(c.id, c.status); await load(); }}>{c.status === "inativo" ? "Reativar" : "Inativar"}</Button></div></td></tr>)}</tbody></table></div>}
+          <div className="overflow-x-auto rounded-xl border"><table className="w-full min-w-[1200px] text-sm"><thead className="bg-slate-50"><tr>{[["cliente", "Cliente"],["documento", "Documento"],["regime", "Regime"],["segmento", "Segmento"],["status", "Status"],["receita", "Honorário"],["margem", "Margem"],["quadrante", "Quadrante"]].map(([k, label]) => <th key={k} className="text-left px-3 py-2 whitespace-nowrap"><button onClick={() => setSort({ key: k as SortKey, dir: sort.key === k && sort.dir === "asc" ? "desc" : "asc" })}>{label}</button></th>)}<th className="px-3 py-2 whitespace-nowrap">Custo</th><th className="px-3 py-2 whitespace-nowrap">Lucro</th><th className="px-3 py-2 whitespace-nowrap">Horas</th><th className="px-3 py-2 whitespace-nowrap">Ações</th></tr></thead><tbody>{rows.map((c) => <tr key={c.id} className="border-t"><td className="px-3 py-2 whitespace-nowrap"><p className="font-medium whitespace-nowrap">{c.nome}</p></td><td className="px-3 py-2 whitespace-nowrap">{c.documento || "-"}</td><td className="px-3 py-2 whitespace-nowrap">{c.regime_tributario || "-"}</td><td className="px-3 py-2 whitespace-nowrap">{c.segmento || "-"}</td><td className="px-3 py-2 whitespace-nowrap">{formatStatus(c.status)}</td><td className="px-3 py-2 whitespace-nowrap">{brl(c.receita)}</td><td className="px-3 py-2 whitespace-nowrap">{pct(c.margem)}</td><td className="px-3 py-2 whitespace-nowrap"><span className="text-white rounded-full px-3 py-1 text-xs whitespace-nowrap inline-flex items-center" style={{ background: QUADRANTE_COLORS[c.quadrante] }}>{c.quadrante}</span></td><td className="px-3 py-2 whitespace-nowrap">{brl(c.custo)}</td><td className="px-3 py-2 whitespace-nowrap">{brl(c.lucro)}</td><td className="px-3 py-2 whitespace-nowrap">{c.horas_alocadas.toFixed(1)}</td><td className="px-3 py-2 whitespace-nowrap"><div className="flex gap-1"><Button variant="ghost" onClick={() => openEdit(c)}>Editar</Button></div></td></tr>)}</tbody></table></div>}
 
         <div className="flex items-center justify-between"><Button variant="ghost" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Anterior</Button><span className="text-sm">Página {page} de {totalPages}</span><Button variant="ghost" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Próxima</Button></div>
       </CardContent>
     </Card>
 
     {showModal && <div className="fixed inset-0 z-50 bg-black/40 p-4 grid place-items-center"><div className="bg-white max-w-5xl w-full rounded-2xl p-6 space-y-5 max-h-[92vh] overflow-auto"><div className="flex justify-between"><h3 className="font-semibold text-xl">{editingId ? "Editar Cliente" : "Novo Cliente"}</h3><Button variant="ghost" onClick={() => setShowModal(false)}>Fechar</Button></div>
-      <section className="space-y-2"><h4 className="font-semibold">Dados cadastrais</h4><div className="grid grid-cols-1 md:grid-cols-3 gap-2">{[["nome","Nome/Razão social *"],["apelido","Apelido"],["documento","Documento"],["cidade","Cidade"],["uf","UF"],["data_entrada","Data de entrada"],["data_saida","Data de saída"]].map(([k,l]) => <input key={k} type={k.includes("data") ? "date" : "text"} className="rounded-xl border px-3 py-2" placeholder={l} value={(form as any)[k] || ""} onChange={(e) => setForm({ ...form, [k]: e.target.value })} />)}<select className="rounded-xl border px-3 py-2" value={form.regime_tributario} onChange={(e) => setForm({ ...form, regime_tributario: e.target.value })}><option value="">Regime</option>{REGIME_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select><select className="rounded-xl border px-3 py-2" value={form.segmento} onChange={(e) => setForm({ ...form, segmento: e.target.value })}><option value="">Segmento</option>{SEGMENTO_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select><select className="rounded-xl border px-3 py-2" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>{STATUS_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select></div></section>
-      <section className="space-y-2"><h4 className="font-semibold">Financeiro mensal</h4><div className="grid md:grid-cols-3 gap-2"><input type="month" className="rounded-xl border px-3 py-2" value={form.mes_referencia} onChange={(e) => setForm({ ...form, mes_referencia: e.target.value })} /><input type="number" step="0.01" className="rounded-xl border px-3 py-2" placeholder="Receita" value={form.receita} onChange={(e) => setForm({ ...form, receita: Number(e.target.value) })} /><input type="number" step="0.01" className="rounded-xl border px-3 py-2" placeholder="Custo" value={form.custo} onChange={(e) => setForm({ ...form, custo: Number(e.target.value) })} /></div></section>
-      <section className="space-y-2"><h4 className="font-semibold">Operação / esforço</h4>{form.alocacoes.map((a, idx) => <div key={idx} className="grid md:grid-cols-4 gap-2"><select className="rounded-xl border px-3 py-2" value={a.colaborador_id} onChange={(e) => updateAloc(setForm, form.alocacoes, idx, { colaborador_id: e.target.value })}><option value="">Colaborador</option>{meta.colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select><select className="rounded-xl border px-3 py-2" value={a.time_id || ""} onChange={(e) => updateAloc(setForm, form.alocacoes, idx, { time_id: e.target.value })}><option value="">Time</option>{meta.times.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}</select><input type="month" className="rounded-xl border px-3 py-2" value={a.mes_referencia} onChange={(e) => updateAloc(setForm, form.alocacoes, idx, { mes_referencia: e.target.value })} /><input type="number" step="0.1" className="rounded-xl border px-3 py-2" value={a.horas_alocadas} onChange={(e) => updateAloc(setForm, form.alocacoes, idx, { horas_alocadas: Number(e.target.value) })} /></div>)}<Button variant="ghost" onClick={() => setForm({ ...form, alocacoes: [...form.alocacoes, { colaborador_id: "", time_id: "", mes_referencia: form.mes_referencia, horas_alocadas: 0 }] })}>+ Adicionar alocação</Button></section>
-      <section className="rounded-xl bg-slate-50 p-4"><h4 className="font-semibold mb-2">Resumo automático</h4><div className="grid md:grid-cols-4 gap-2 text-sm"><p>Receita: <b>{brl(resumoPreview.receita)}</b></p><p>Custo: <b>{brl(resumoPreview.custo)}</b></p><p>Lucro: <b>{brl(resumoPreview.lucro)}</b></p><p>Margem: <b>{pct(resumoPreview.margem)}</b></p><p>Total de horas: <b>{resumoPreview.horas.toFixed(1)}</b></p><p className="md:col-span-3">Quadrante: <span className="font-semibold" style={{ color: QUADRANTE_COLORS[resumoPreview.quadrante] }}>{resumoPreview.quadrante}</span></p></div></section>
-      <div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => setShowModal(false)}>Cancelar</Button><Button disabled={saving} onClick={onSave}>{saving ? "Salvando..." : "Salvar cliente"}</Button></div></div></div>}
+      <section className="space-y-4"><h4 className="text-sm font-semibold text-slate-700">Dados cadastrais</h4><div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="flex flex-col gap-1"><label className="text-xs text-slate-500">Nome / Razão Social</label><input className="rounded-xl border px-3 py-2 w-full" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} /></div>
+        <div className="flex flex-col gap-1"><label className="text-xs text-slate-500">Apelido</label><input className="rounded-xl border px-3 py-2 w-full" value={form.apelido} onChange={(e) => setForm({ ...form, apelido: e.target.value })} /></div>
+        <div className="flex flex-col gap-1"><label className="text-xs text-slate-500">CNPJ</label><input className="rounded-xl border px-3 py-2 w-full" value={formatCNPJ(form.documento ?? "")} onChange={(e) => setForm({ ...form, documento: onlyDigits(e.target.value).slice(0, 14) })} /></div>
+        <div className="flex flex-col gap-1"><label className="text-xs text-slate-500">Cidade</label><input className="rounded-xl border px-3 py-2 w-full" value={form.cidade} onChange={(e) => setForm({ ...form, cidade: e.target.value })} /></div>
+        <div className="flex flex-col gap-1"><label className="text-xs text-slate-500">UF</label><input className="rounded-xl border px-3 py-2 w-full" value={form.uf} onChange={(e) => setForm({ ...form, uf: e.target.value })} /></div>
+        <div className="flex flex-col gap-1"><label className="text-xs text-slate-500">Data de entrada</label><input type="date" className="rounded-xl border px-3 py-2 w-full" value={form.data_entrada} onChange={(e) => setForm({ ...form, data_entrada: e.target.value })} /></div>
+        <div className="flex flex-col gap-1"><label className="text-xs text-slate-500">Data de saída</label><input type="date" className="rounded-xl border px-3 py-2 w-full" value={form.data_saida} onChange={(e) => setForm({ ...form, data_saida: e.target.value })} /></div>
+        <div className="flex flex-col gap-1"><label className="text-xs text-slate-500">Regime tributário</label><select className="rounded-xl border px-3 py-2 w-full" value={form.regime_tributario} onChange={(e) => setForm({ ...form, regime_tributario: e.target.value })}><option value="">Selecione</option>{REGIME_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select></div>
+        <div className="flex flex-col gap-1"><label className="text-xs text-slate-500">Segmento</label><select className="rounded-xl border px-3 py-2 w-full" value={form.segmento} onChange={(e) => setForm({ ...form, segmento: e.target.value })}><option value="">Selecione</option>{SEGMENTO_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select></div>
+        <div className="flex flex-col gap-1"><label className="text-xs text-slate-500">Status</label><select className="rounded-xl border px-3 py-2 w-full" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}><option value="">Selecione</option>{STATUS_OPTIONS.map((x) => <option key={x}>{x}</option>)}</select></div>
+      </div></section>
+      <section className="space-y-4"><h4 className="text-sm font-semibold text-slate-700">Financeiro mensal</h4><div className="grid md:grid-cols-3 gap-3"><div className="flex flex-col gap-1"><label className="text-xs text-slate-500">Mês de referência</label><input type="month" className="rounded-xl border px-3 py-2 w-full" value={form.mes_referencia} onChange={(e) => setForm({ ...form, mes_referencia: e.target.value })} /></div><div className="flex flex-col gap-1"><label className="text-xs text-slate-500">Receita</label><input type="number" step="0.01" className="rounded-xl border px-3 py-2 w-full" value={form.receita} onChange={(e) => setForm({ ...form, receita: Number(e.target.value) })} /></div><div className="flex flex-col gap-1"><label className="text-xs text-slate-500">Custo</label><input type="number" step="0.01" className="rounded-xl border px-3 py-2 w-full" value={form.custo} onChange={(e) => setForm({ ...form, custo: Number(e.target.value) })} /></div></div></section>
+      <section className="space-y-4"><h4 className="text-sm font-semibold text-slate-700">Operação / esforço</h4>{form.alocacoes.map((a, idx) => <div key={idx} className="grid md:grid-cols-4 gap-3"><div className="flex flex-col gap-1"><label className="text-xs text-slate-500">Colaborador</label><select className="rounded-xl border px-3 py-2 w-full" value={a.colaborador_id} onChange={(e) => updateAloc(setForm, form.alocacoes, idx, { colaborador_id: e.target.value })}><option value="">Selecione</option>{meta.colaboradores.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</select></div><div className="flex flex-col gap-1"><label className="text-xs text-slate-500">Time</label><select className="rounded-xl border px-3 py-2 w-full" value={a.time_id || ""} onChange={(e) => updateAloc(setForm, form.alocacoes, idx, { time_id: e.target.value })}><option value="">Selecione</option>{meta.times.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}</select></div><div className="flex flex-col gap-1"><label className="text-xs text-slate-500">Mês de referência</label><input type="month" className="rounded-xl border px-3 py-2 w-full" value={a.mes_referencia} onChange={(e) => updateAloc(setForm, form.alocacoes, idx, { mes_referencia: e.target.value })} /></div><div className="flex flex-col gap-1"><label className="text-xs text-slate-500">Horas alocadas</label><input type="number" step="0.1" className="rounded-xl border px-3 py-2 w-full" value={a.horas_alocadas} onChange={(e) => updateAloc(setForm, form.alocacoes, idx, { horas_alocadas: Number(e.target.value) })} /></div></div>)}<Button variant="ghost" onClick={() => setForm({ ...form, alocacoes: [...form.alocacoes, { colaborador_id: "", time_id: "", mes_referencia: form.mes_referencia, horas_alocadas: 0 }] })}>+ Adicionar alocação</Button></section>
+      <section className="rounded-xl bg-slate-50 p-4 space-y-4"><h4 className="text-sm font-semibold text-slate-700">Resumo automático</h4><div className="grid md:grid-cols-3 gap-3 text-sm"><div className="rounded-lg bg-white p-3"><p className="text-xs text-slate-500">Receita</p><p className="font-semibold">{brl(resumoPreview.receita)}</p></div><div className="rounded-lg bg-white p-3"><p className="text-xs text-slate-500">Custo</p><p className="font-semibold">{brl(resumoPreview.custo)}</p></div><div className="rounded-lg bg-white p-3"><p className="text-xs text-slate-500">Lucro</p><p className="font-semibold">{brl(resumoPreview.lucro)}</p></div><div className="rounded-lg bg-white p-3"><p className="text-xs text-slate-500">Margem</p><p className="font-semibold">{pct(resumoPreview.margem)}</p></div><div className="rounded-lg bg-white p-3"><p className="text-xs text-slate-500">Horas</p><p className="font-semibold">{resumoPreview.horas.toFixed(1)}</p></div><div className="rounded-lg bg-white p-3"><p className="text-xs text-slate-500">Quadrante</p><p className="font-semibold" style={{ color: QUADRANTE_COLORS[resumoPreview.quadrante] }}>{resumoPreview.quadrante}</p></div></div></section>
+      <div className="flex justify-between gap-2"><div>{editingId && <Button variant="ghost" disabled={saving} onClick={onToggleStatusInModal}>{form.status === "inativo" ? "Reativar cliente" : "Inativar cliente"}</Button>}</div><div className="flex gap-2"><Button variant="ghost" onClick={() => setShowModal(false)}>Cancelar</Button><Button disabled={saving} onClick={onSave}>{saving ? "Salvando..." : "Salvar cliente"}</Button></div></div></div></div>}
 
-    {viewing && <div className="fixed inset-0 z-50 bg-black/40 p-4 grid place-items-center"><Card className="max-w-xl w-full"><CardHeader className="flex flex-row justify-between"><CardTitle>{viewing.nome}</CardTitle><Button variant="ghost" onClick={() => setViewing(null)}>Fechar</Button></CardHeader><CardContent className="space-y-2 text-sm"><p>Status: <b>{viewing.status}</b></p><p>Documento: {viewing.documento || "-"}</p><p>Receita: {brl(viewing.receita)}</p><p>Custo: {brl(viewing.custo)}</p><p>Lucro: {brl(viewing.lucro)}</p></CardContent></Card></div>}
   </div>;
 }
 
@@ -191,4 +219,18 @@ function updateAloc(setForm: any, list: AlocacaoClienteInput[], idx: number, pat
   const copy = [...list];
   copy[idx] = { ...copy[idx], ...patch };
   setForm((prev: ClienteFormPayload) => ({ ...prev, alocacoes: copy }));
+}
+
+function formatStatus(status: string) {
+  if (!status) return "";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function formatCNPJ(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 14);
+  return digits
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1/$2")
+    .replace(/(\d{4})(\d)/, "$1-$2");
 }
